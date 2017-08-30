@@ -1,0 +1,12 @@
+{
+  "name": "PhotoSwippy",
+  "version": "0.0.1",
+  "description": "PhotoSwipe friendly wrapper",
+  "main": "index.js",
+  "repository": "https://github.com/tuut/PhotoSwippy",
+  "author": "Christian Kaisermann <christian@kaisermann.me>",
+  "license": "MIT",
+  "devDependencies": {
+    "rollup": "^0.49.2"
+  }
+}
