@@ -12,6 +12,7 @@ var galleryCount = 0;
 var galleryList = {};
 
 var slice = function (arrayLike) { return Array.prototype.slice.call(arrayLike); };
+
 var closest = function (el, fn) { return el && (fn(el) ? el : closest(el.parentNode, fn)); };
 
 var assign =
@@ -19,14 +20,14 @@ var assign =
   function (target /* sources */) {
     var arguments$1 = arguments;
 
-    if (target === undefined || target === null) {
+    if (target == null) {
       throw new TypeError('Cannot convert undefined or null to object')
     }
     var output = Object(target);
 
     for (var index = 1; index < arguments.length; index++) {
       var source = arguments$1[index];
-      if (source !== undefined && source !== null) {
+      if (source != null) {
         for (var nextKey in source) {
           if (source.hasOwnProperty(nextKey)) {
             output[nextKey] = source[nextKey];
@@ -38,30 +39,27 @@ var assign =
   };
 
 var selectorMatches = function (el, selector) {
-  var f =
+  var fn =
     Element.prototype.matches ||
     Element.prototype.webkitMatchesSelector ||
     Element.prototype.mozMatchesSelector ||
     Element.prototype.msMatchesSelector;
-  return f.call(el, selector)
+  return fn.call(el, selector)
 };
 
 var getElementIndex = function (node) {
   var index = 0;
-  while ((node = node.previousElementSibling) && ++index){  }
+  while ((node = node.previousElementSibling)) {
+    ++index;
+  }
   return index
 };
 
-var getThumbBoundsFn = function (trigger) { return function (index) {
-  if (trigger) {
-    var pageYScroll = window.pageYOffset || document.documentElement.scrollTop;
-    var rect = trigger.getBoundingClientRect();
-    return { x: rect.left, y: rect.top + pageYScroll, w: rect.width }
-  }
-}; };
-
 var openPhotoSwipe = function (gallery, index, trigger) {
-  // Photoswipe trigger is defined? If not, is the element to be shown visible? If yes, use its image as the trigger element
+  /* Photoswipe trigger is defined?
+   * If not, is the element to be shown visible?
+   * If yes, use its image as the trigger element
+   */
   trigger =
     trigger ||
     (gallery.items[index].el.offsetParent &&
@@ -69,7 +67,14 @@ var openPhotoSwipe = function (gallery, index, trigger) {
 
   var options = assign({}, gallery.options, {
     index: index,
-    getThumbBoundsFn: getThumbBoundsFn(trigger)
+    getThumbBoundsFn: function (index) {
+      if (trigger) {
+        var pageYScroll =
+          window.pageYOffset || document.documentElement.scrollTop;
+        var rect = trigger.getBoundingClientRect();
+        return { x: rect.left, y: rect.top + pageYScroll, w: rect.width }
+      }
+    }
   });
 
   var pswpGallery = new PhotoSwipe(
@@ -104,44 +109,59 @@ var handleGalleryClick = function (gallery) { return function (e) {
   e = e || window.event;
   e.preventDefault ? e.preventDefault() : (e.returnValue = false);
 
-  var target = e.target || e.srcElement;
+  /*
+   * Go up the DOM tree until it finds
+   * the clicked item (matches the itemSelector)
+   */
   var currentItem = closest(
-    target,
+    e.target || e.srcElement,
     function (el) { return el.nodeType === 1 && selectorMatches(el, gallery.options.itemSelector); }
   );
+
+  // If the click didn't hit a gallery item, do nothing
   if (!currentItem) { return }
 
+  /* If, for some structural reason, the item is not a
+   * direct child of the gallery element,
+   * let's go up the DOM tree until we find it.
+   */
   var tmpItem = currentItem;
   while (tmpItem.parentNode !== gallery.el) {
     tmpItem = tmpItem.parentNode;
   }
-  var currentIndex = getElementIndex(tmpItem);
-  if (currentIndex >= 0) {
-    openPhotoSwipe(gallery, currentIndex, currentItem);
-  }
+  openPhotoSwipe(gallery, getElementIndex(tmpItem), currentItem);
 }; };
 
-var buildGallery = function (el, galleryOptions) {
-  var dataPswpOptions = el.dataset.pswpOptions;
+var buildGallery = function (galleryEl, galleryOptions) {
+  galleryCount++;
+
+  var dataPswpOptions = galleryEl.dataset.pswpOptions;
   if (dataPswpOptions != null && dataPswpOptions !== '') {
     galleryOptions = JSON.parse(dataPswpOptions);
   }
 
-  galleryCount++;
   var options = assign(
     // Default gallery ID
     {
       galleryUID:
-        el.dataset.pswpId || el.dataset.pswp || ("gallery-" + galleryCount)
+        galleryEl.dataset.pswpId ||
+        galleryEl.dataset.pswp ||
+        ("gallery-" + galleryCount)
     },
     // Default options
     PhotoSwipeGlobalOptions,
     // Assign the options object if available. Otherwise, try to parse data-pswp
     galleryOptions
   );
-  el.dataset.pswp = options.galleryUID;
 
-  var items = slice(el.querySelectorAll(options.itemSelector)).map(function (item) {
+  /* Update the element data-pswp attribute
+   * with the actual ID (useful for generated ones)
+   */
+  galleryEl.dataset.pswp = options.galleryUID;
+
+  var items = slice(
+    galleryEl.querySelectorAll(options.itemSelector)
+  ).map(function (item) {
     var ref = (item.dataset.pswpSize || '')
       .toLowerCase()
       .split('x');
@@ -163,7 +183,7 @@ var buildGallery = function (el, galleryOptions) {
     }
   });
 
-  return { el: el, options: options, items: items }
+  return { el: galleryEl, options: options, items: items }
 };
 
 // Check if hash url has a 'gid' and a 'pid'

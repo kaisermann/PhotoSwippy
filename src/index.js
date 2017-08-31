@@ -6,20 +6,21 @@ let galleryCount = 0
 let galleryList = {}
 
 const slice = arrayLike => Array.prototype.slice.call(arrayLike)
+
 const closest = (el, fn) => el && (fn(el) ? el : closest(el.parentNode, fn))
 
 const assign =
   Object.assign ||
   function (target /* sources */) {
-    if (target === undefined || target === null) {
+    if (target == null) {
       throw new TypeError('Cannot convert undefined or null to object')
     }
     const output = Object(target)
 
     for (let index = 1; index < arguments.length; index++) {
-      let source = arguments[index]
-      if (source !== undefined && source !== null) {
-        for (let nextKey in source) {
+      const source = arguments[index]
+      if (source != null) {
+        for (const nextKey in source) {
           if (source.hasOwnProperty(nextKey)) {
             output[nextKey] = source[nextKey]
           }
@@ -30,30 +31,27 @@ const assign =
   }
 
 const selectorMatches = (el, selector) => {
-  const f =
+  const fn =
     Element.prototype.matches ||
     Element.prototype.webkitMatchesSelector ||
     Element.prototype.mozMatchesSelector ||
     Element.prototype.msMatchesSelector
-  return f.call(el, selector)
+  return fn.call(el, selector)
 }
 
 const getElementIndex = node => {
   let index = 0
-  while ((node = node.previousElementSibling) && ++index);
+  while ((node = node.previousElementSibling)) {
+    ++index
+  }
   return index
 }
 
-const getThumbBoundsFn = trigger => index => {
-  if (trigger) {
-    const pageYScroll = window.pageYOffset || document.documentElement.scrollTop
-    const rect = trigger.getBoundingClientRect()
-    return { x: rect.left, y: rect.top + pageYScroll, w: rect.width }
-  }
-}
-
 const openPhotoSwipe = (gallery, index, trigger) => {
-  // Photoswipe trigger is defined? If not, is the element to be shown visible? If yes, use its image as the trigger element
+  /* Photoswipe trigger is defined?
+   * If not, is the element to be shown visible?
+   * If yes, use its image as the trigger element
+   */
   trigger =
     trigger ||
     (gallery.items[index].el.offsetParent &&
@@ -61,7 +59,14 @@ const openPhotoSwipe = (gallery, index, trigger) => {
 
   const options = assign({}, gallery.options, {
     index,
-    getThumbBoundsFn: getThumbBoundsFn(trigger)
+    getThumbBoundsFn: index => {
+      if (trigger) {
+        const pageYScroll =
+          window.pageYOffset || document.documentElement.scrollTop
+        const rect = trigger.getBoundingClientRect()
+        return { x: rect.left, y: rect.top + pageYScroll, w: rect.width }
+      }
+    }
   })
 
   const pswpGallery = new PhotoSwipe(
@@ -96,44 +101,59 @@ const handleGalleryClick = gallery => e => {
   e = e || window.event
   e.preventDefault ? e.preventDefault() : (e.returnValue = false)
 
-  const target = e.target || e.srcElement
+  /*
+   * Go up the DOM tree until it finds
+   * the clicked item (matches the itemSelector)
+   */
   const currentItem = closest(
-    target,
+    e.target || e.srcElement,
     el => el.nodeType === 1 && selectorMatches(el, gallery.options.itemSelector)
   )
+
+  // If the click didn't hit a gallery item, do nothing
   if (!currentItem) return
 
+  /* If, for some structural reason, the item is not a
+   * direct child of the gallery element,
+   * let's go up the DOM tree until we find it.
+   */
   let tmpItem = currentItem
   while (tmpItem.parentNode !== gallery.el) {
     tmpItem = tmpItem.parentNode
   }
-  const currentIndex = getElementIndex(tmpItem)
-  if (currentIndex >= 0) {
-    openPhotoSwipe(gallery, currentIndex, currentItem)
-  }
+  openPhotoSwipe(gallery, getElementIndex(tmpItem), currentItem)
 }
 
-const buildGallery = (el, galleryOptions) => {
-  const dataPswpOptions = el.dataset.pswpOptions
+const buildGallery = (galleryEl, galleryOptions) => {
+  galleryCount++
+
+  const dataPswpOptions = galleryEl.dataset.pswpOptions
   if (dataPswpOptions != null && dataPswpOptions !== '') {
     galleryOptions = JSON.parse(dataPswpOptions)
   }
 
-  galleryCount++
   const options = assign(
     // Default gallery ID
     {
       galleryUID:
-        el.dataset.pswpId || el.dataset.pswp || `gallery-${galleryCount}`
+        galleryEl.dataset.pswpId ||
+        galleryEl.dataset.pswp ||
+        `gallery-${galleryCount}`
     },
     // Default options
     PhotoSwipeGlobalOptions,
     // Assign the options object if available. Otherwise, try to parse data-pswp
     galleryOptions
   )
-  el.dataset.pswp = options.galleryUID
 
-  const items = slice(el.querySelectorAll(options.itemSelector)).map(item => {
+  /* Update the element data-pswp attribute
+   * with the actual ID (useful for generated ones)
+   */
+  galleryEl.dataset.pswp = options.galleryUID
+
+  const items = slice(
+    galleryEl.querySelectorAll(options.itemSelector)
+  ).map(item => {
     const [width, height] = (item.dataset.pswpSize || '')
       .toLowerCase()
       .split('x')
@@ -153,7 +173,7 @@ const buildGallery = (el, galleryOptions) => {
     }
   })
 
-  return { el, options, items }
+  return { el: galleryEl, options, items }
 }
 
 // Check if hash url has a 'gid' and a 'pid'
