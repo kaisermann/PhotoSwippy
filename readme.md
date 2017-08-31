@@ -12,7 +12,7 @@
 
 ## Usage
 
-`PhotoSwippy` is just a wrapper for `PhotoSwipe`. This means you still have to import/include the `PhotoSwipe` and `PhotoSwipeUI` libraries (and the rest of the relevant assets such as CSS and icons).
+`PhotoSwippy` is just a wrapper for `PhotoSwipe`. This means you still have to import/include the `PhotoSwipe` and `PhotoSwipeUI` libraries (and the rest of the relevant assets such as CSS and icons). `PhotoSwippy` expects that the [`PhotoSwipe template element`](http://photoswipe.com/documentation/getting-started.html) has the `pswp` class and it's already on the DOM.
 
 ### Module
 
