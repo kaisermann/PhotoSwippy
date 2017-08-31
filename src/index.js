@@ -114,22 +114,29 @@ const handleGalleryClick = gallery => e => {
 }
 
 const buildGallery = (el, galleryOptions) => {
-  const dataPswp = el.dataset.pswp
-  if (dataPswp != null && dataPswp !== '') {
-    galleryOptions = JSON.parse(dataPswp)
+  const dataPswpOptions = el.dataset.pswpOptions
+  if (dataPswpOptions != null && dataPswpOptions !== '') {
+    galleryOptions = JSON.parse(dataPswpOptions)
   }
 
+  galleryCount++
   const options = assign(
     // Default gallery ID
-    { galleryUID: el.dataset.pswpId || `gallery-${++galleryCount}` },
+    {
+      galleryUID:
+        el.dataset.pswpId || el.dataset.pswp || `gallery-${galleryCount}`
+    },
     // Default options
     PhotoSwipeGlobalOptions,
     // Assign the options object if available. Otherwise, try to parse data-pswp
     galleryOptions
   )
+  el.dataset.pswp = options.galleryUID
 
   const items = slice(el.querySelectorAll(options.itemSelector)).map(item => {
-    const [width, height] = (item.dataset.pswpSize || '').split('x')
+    const [width, height] = (item.dataset.pswpSize || '')
+      .toLowerCase()
+      .split('x')
     const captionEl = item.querySelector(options.captionSelector)
     const innerImgEl = item.getElementsByTagName('img')[0]
 
@@ -139,7 +146,7 @@ const buildGallery = (el, galleryOptions) => {
       w: width || item.dataset.pswpWidth || 0,
       h: height || item.dataset.pswpHeight || 0,
       title:
-        item.dataset.pswpTitle ||
+        item.dataset.pswpCaption ||
         (captionEl && captionEl.innerHTML) ||
         (innerImgEl && innerImgEl.alt) ||
         ''
@@ -177,7 +184,15 @@ const searchTriggers = () => {
     if (!trigger.photoswippy) {
       trigger.photoswippy = true
       trigger.addEventListener('click', function () {
-        openPhotoSwipe(galleryList[this.dataset.pswpTrigger], 0, this)
+        const gallery = galleryList[this.dataset.pswpTrigger]
+        if (!gallery) {
+          console.error(
+            `[PhotoSwippy] Gallery with id '${this.dataset
+              .pswpTrigger}' not found.`
+          )
+        } else {
+          openPhotoSwipe(gallery, 0, this)
+        }
       })
     }
   })
@@ -186,9 +201,11 @@ const searchTriggers = () => {
 const build = (elOrSelector, options) => {
   if (!PhotoSwipe || !PhotoSwipeUI) {
     throw Error(
-      '[PhotoSwippy] Must initialize photoswipe with PhotoSwippy.init()'
+      '[PhotoSwippy] PhotoSwipe and PhotoSwipeUI libraries were not found. Was "PhotoSwippy.init()" called?'
     )
   }
+
+  if (!elOrSelector) return
 
   const galleryEls =
     typeof elOrSelector === 'string'

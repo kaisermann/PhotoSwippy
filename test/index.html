@@ -96,7 +96,7 @@
       <div class="columns">
         <div class="column">
           <a href="#" data-pswp-trigger="gallery-2">OIE</a>
-          <div class="hidden-gallery" data-pswp data-pswp-id="gallery-2">
+          <div class="hidden-gallery" data-pswp="gallery-2">
             <a href="http://placehold.it/1000x1000">
               <figure>
                 <img src="http://placehold.it/300x300" alt="" width="300" height="300">
@@ -117,29 +117,29 @@
             </a>
           </div>
         </div>
-          <div class="column">
-            <a href="#" data-pswp-trigger="gallery-3">Oie</a>
-            <div class="hidden-gallery gallery-3" data-pswp-id="gallery-3">
-              <a href="http://placehold.it/1000x1000">
-                <figure>
-                  <img src="http://placehold.it/300x300" alt="" width="300" height="300">
-                  <figcaption>teste</figcaption>
-                </figure>
-              </a>
-              <a href="http://placehold.it/1001x1001">
-                <figure>
-                  <img src="http://placehold.it/301x301" alt="" width="300" height="300">
-                  <figcaption>teste</figcaption>
-                </figure>
-              </a>
-              <a href="http://placehold.it/1002x1002">
-                <figure>
-                  <img src="http://placehold.it/302x302" alt="" width="300" height="300">
-                  <figcaption>teste</figcaption>
-                </figure>
-              </a>
-            </div>
+        <div class="column">
+          <a href="#" data-pswp-trigger="10321">Oie</a>
+          <div class="hidden-gallery gallery-3" data-pswp data-pswp-options='{"galleryUID":10321}'>
+            <a href="http://placehold.it/1000x1000">
+              <figure>
+                <img src="http://placehold.it/300x300" alt="" width="300" height="300">
+                <figcaption>teste</figcaption>
+              </figure>
+            </a>
+            <a href="http://placehold.it/1001x1001">
+              <figure>
+                <img src="http://placehold.it/301x301" alt="" width="300" height="300">
+                <figcaption>teste</figcaption>
+              </figure>
+            </a>
+            <a href="http://placehold.it/1002x1002">
+              <figure>
+                <img src="http://placehold.it/302x302" alt="" width="300" height="300">
+                <figcaption>teste</figcaption>
+              </figure>
+            </a>
           </div>
+        </div>
       </div>
     </div>
   </section>
@@ -185,7 +185,7 @@
   <script src="../dist/photoswippy.js"></script>
   <script type="text/javascript">
     photoswippy.init(PhotoSwipe, PhotoSwipeUI_Default)
-    photoswippy.build('.gallery-3')
+    photoswippy.build()
   </script>
 </body>
 

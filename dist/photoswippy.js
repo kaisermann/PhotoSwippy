@@ -122,22 +122,29 @@ var handleGalleryClick = function (gallery) { return function (e) {
 }; };
 
 var buildGallery = function (el, galleryOptions) {
-  var dataPswp = el.dataset.pswp;
-  if (dataPswp != null && dataPswp !== '') {
-    galleryOptions = JSON.parse(dataPswp);
+  var dataPswpOptions = el.dataset.pswpOptions;
+  if (dataPswpOptions != null && dataPswpOptions !== '') {
+    galleryOptions = JSON.parse(dataPswpOptions);
   }
 
+  galleryCount++;
   var options = assign(
     // Default gallery ID
-    { galleryUID: el.dataset.pswpId || ("gallery-" + (++galleryCount)) },
+    {
+      galleryUID:
+        el.dataset.pswpId || el.dataset.pswp || ("gallery-" + galleryCount)
+    },
     // Default options
     PhotoSwipeGlobalOptions,
     // Assign the options object if available. Otherwise, try to parse data-pswp
     galleryOptions
   );
+  el.dataset.pswp = options.galleryUID;
 
   var items = slice(el.querySelectorAll(options.itemSelector)).map(function (item) {
-    var ref = (item.dataset.pswpSize || '').split('x');
+    var ref = (item.dataset.pswpSize || '')
+      .toLowerCase()
+      .split('x');
     var width = ref[0];
     var height = ref[1];
     var captionEl = item.querySelector(options.captionSelector);
@@ -149,7 +156,7 @@ var buildGallery = function (el, galleryOptions) {
       w: width || item.dataset.pswpWidth || 0,
       h: height || item.dataset.pswpHeight || 0,
       title:
-        item.dataset.pswpTitle ||
+        item.dataset.pswpCaption ||
         (captionEl && captionEl.innerHTML) ||
         (innerImgEl && innerImgEl.alt) ||
         ''
@@ -189,7 +196,15 @@ var searchTriggers = function () {
     if (!trigger.photoswippy) {
       trigger.photoswippy = true;
       trigger.addEventListener('click', function () {
-        openPhotoSwipe(galleryList[this.dataset.pswpTrigger], 0, this);
+        var gallery = galleryList[this.dataset.pswpTrigger];
+        if (!gallery) {
+          console.error(
+            ("[PhotoSwippy] Gallery with id '" + (this.dataset
+              .pswpTrigger) + "' not found.")
+          );
+        } else {
+          openPhotoSwipe(gallery, 0, this);
+        }
       });
     }
   });
@@ -198,9 +213,11 @@ var searchTriggers = function () {
 var build = function (elOrSelector, options) {
   if (!PhotoSwipe || !PhotoSwipeUI) {
     throw Error(
-      '[PhotoSwippy] Must initialize photoswipe with PhotoSwippy.init()'
+      '[PhotoSwippy] PhotoSwipe and PhotoSwipeUI libraries were not found. Was "PhotoSwippy.init()" called?'
     )
   }
+
+  if (!elOrSelector) { return }
 
   var galleryEls =
     typeof elOrSelector === 'string'
