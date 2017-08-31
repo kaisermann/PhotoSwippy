@@ -2,6 +2,44 @@
 
 [PhotoSwipe](http://photoswipe.com/) is an awesome modular, lightweight and fast lightbox. Unfortunately its implementation can be a bit cumbersome, having to write a lot of code. There are some helpers, such as [jquery.photoswipe](https://github.com/yaquawa/jquery.photoswipe) and [photoswiper](https://www.npmjs.com/package/photoswiper), but something simpler, but configurable, was still needed and so **PhotoSwippy** was born.
 
+## Installation
+
+`npm install --save photoswippy`
+
+`yarn add photoswippy`
+
+`bower install --save photoswippy`
+
+## Usage
+
+`PhotoSwippy` is just a wrapper for `PhotoSwipe`. This means you still have to import/include the `PhotoSwipe` and `PhotoSwipeUI` libraries (and the rest of the relevant assets such as CSS and icons).
+
+### Module
+
+```javascript
+import PhotoSwipe from 'photoswipe'
+import PhotoSwipeUIDefault from 'photoswipe/dist/photoswipe-ui-default'
+import PhotoSwippy from 'photoswippy'
+
+PhotoSwippy.init(
+  PhotoSwipe,
+  PhotoSwipeUIDefault,
+  optionsObject = {}
+)
+```
+
+### Browser
+
+```html
+<script src="..../photoswipe.js"></script>
+<script src="..../photoswipe-ui-default.min.js"></script>
+<script src="..../photoswippy.js"></script>
+<script type="text/javascript">
+  photoswippy.init(PhotoSwipe, PhotoSwipeUI_Default, options)
+</script>
+```
+
+If both `PhotoSwipe` and `PhotoSwipeUI_Default` are on the global scope, the first parameters of `.init` can be `undefined`.
 
 ## How it works
 
@@ -68,37 +106,6 @@ If a specific element outside of the gallery needs to trigger it (let's suppose 
   Open second gallery
 </button>
 ```
-
-## Usage
-
-`PhotoSwippy` is just a wrapper for `PhotoSwipe`. This means you still have to import/include the `PhotoSwipe` and `PhotoSwipeUI` libraries (and the rest of the relevant assets such as CSS and icons).
-
-### Module
-
-```javascript
-import PhotoSwipe from 'photoswipe'
-import PhotoSwipeUIDefault from 'photoswipe/dist/photoswipe-ui-default'
-import PhotoSwippy from 'photoswippy'
-
-PhotoSwippy.init(
-  PhotoSwipe,
-  PhotoSwipeUIDefault,
-  optionsObject = {}
-)
-```
-
-### Browser
-
-```html
-<script src="..../photoswipe.js"></script>
-<script src="..../photoswipe-ui-default.min.js"></script>
-<script src="..../photoswippy.js"></script>
-<script type="text/javascript">
-  photoswippy.init(PhotoSwipe, PhotoSwipeUI_Default, options)
-</script>
-```
-
-If both `PhotoSwipe` and `PhotoSwipeUI_Default` are on the global scope, the first parameters of `.init` can be `undefined`.
 
 ## Options
 

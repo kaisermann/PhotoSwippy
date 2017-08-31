@@ -1,5 +1,5 @@
 {
-  "name": "PhotoSwippy",
+  "name": "photoswippy",
   "version": "0.0.1",
   "description": "PhotoSwipe friendly wrapper",
   "main": "dist/photoswippy.js",
