@@ -50,7 +50,7 @@ The default `itemSelector` is `a` and `PhotoSwippy` searches it for:
 - Size of image to be opened (`data-pswp-width` AND `data-pswp-height` OR `data-pswp-size="WIDTHxHEIGHT"`)
 - Caption (`data-pswp-caption` or the `captionSelector` HTML or the thumbnail's `alt` attribute value)
 
-*Obs: `PhotoSwipe` requires to previously know the size of the image to be opened. However, `PhotoSwippy` allows you to ommit if there's really no way to know the size values.*
+*Obs: `PhotoSwipe` requires to previously know the size of the image to be opened. However, `PhotoSwippy` allows you to ommit it if there's really no way to know the size values.*
 
 **Example:**
 
