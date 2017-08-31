@@ -1,6 +1,6 @@
 # PhotoSwippy
 
-[PhotoSwipe](http://photoswipe.com/) is an awesome modular, lightweight and fast lightbox. Unfortunately its implementation can be a bit cumbersome, having to write a lot of code. There are some helpers, such as [jquery.photoswipe](https://github.com/yaquawa/jquery.photoswipe) and [photoswiper](https://www.npmjs.com/package/photoswiper), but something simpler, but configurable, was still needed and so **PhotoSwippy** was born.
+[PhotoSwipe](http://photoswipe.com/) is an awesome modular, lightweight and fast lightbox. Unfortunately its implementation can be a bit cumbersome, having to write a lot of code. There are some helpers, such as [jquery.photoswipe](https://github.com/yaquawa/jquery.photoswipe) and [photoswiper](https://www.npmjs.com/package/photoswiper), but something simpler, but still configurable, was needed and so **PhotoSwippy** was born.
 
 ## Installation
 
