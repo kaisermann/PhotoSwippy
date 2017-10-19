@@ -232,9 +232,9 @@ var searchTriggers = function () {
 
 var build = function (elOrSelector, options) {
   if (!PhotoSwipe || !PhotoSwipeUI) {
-    throw Error(
+    console.error(
       '[PhotoSwippy] PhotoSwipe and PhotoSwipeUI libraries were not found. Was "PhotoSwippy.init()" called?'
-    )
+    );
   }
 
   if (!elOrSelector) { return }
@@ -277,9 +277,9 @@ var init = function (
   );
   PhotoswipeTemplate = document.querySelector('.pswp');
   if (!PhotoswipeTemplate) {
-    throw Error(
+    console.error(
       '[PhotoSwippy] Photoswipe template (Element with .pswp class) not found.'
-    )
+    );
   }
 
   // Initialize all available galleries (data-pswp)

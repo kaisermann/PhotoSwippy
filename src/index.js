@@ -220,7 +220,7 @@ const searchTriggers = () => {
 
 const build = (elOrSelector, options) => {
   if (!PhotoSwipe || !PhotoSwipeUI) {
-    throw Error(
+    console.error(
       '[PhotoSwippy] PhotoSwipe and PhotoSwipeUI libraries were not found. Was "PhotoSwippy.init()" called?'
     )
   }
@@ -262,7 +262,7 @@ const init = (
   )
   PhotoswipeTemplate = document.querySelector('.pswp')
   if (!PhotoswipeTemplate) {
-    throw Error(
+    console.error(
       '[PhotoSwippy] Photoswipe template (Element with .pswp class) not found.'
     )
   }

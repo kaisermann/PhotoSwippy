@@ -48,7 +48,7 @@ Each element with a `data-pswp` attribute will become a photoswipe gallery. Its 
 The default `itemSelector` is `a` and `PhotoSwippy` searches it for:
 - URL of image to be opened (`href` or `data-pswp-src`)
 - Size of image to be opened (`data-pswp-width` AND `data-pswp-height` OR `data-pswp-size="WIDTHxHEIGHT"`)
-- Caption (`data-pswp-caption` or the `captionSelector` HTML or the thumbnail's `alt` attribute value)
+- Caption (`data-pswp-caption` or the `options.captionSelector` HTML or the thumbnail's `alt` attribute value)
 
 *Obs: `PhotoSwipe` requires to previously know the size of the image to be opened. However, `PhotoSwippy` allows you to ommit it if there's really no way to know the size values.*
 
