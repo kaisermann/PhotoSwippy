@@ -11,8 +11,16 @@ var PhotoswipeTemplate;
 var galleryCount = 0;
 var galleryList = {};
 
+var defaultPhotoswippyOptions = {
+  indexSelector: null,
+  itemSelector: 'a',
+  captionSelector: 'figcaption'
+};
+
+/** Clones an array-like */
 var slice = function (arrayLike) { return Array.prototype.slice.call(arrayLike); };
 
+/** Finds the closest hierarchical parent that matches a certain condition */
 var closest = function (el, fn) { return el && (fn(el) ? el : closest(el.parentNode, fn)); };
 
 var assign =
@@ -56,19 +64,13 @@ var getElementIndex = function (node) {
 };
 
 var openPhotoSwipe = function (gallery, index, trigger) {
-  /* Photoswipe trigger is defined?
-   * If not, is the element to be shown visible?
-   * If yes, use its image as the trigger element
-   */
-  trigger =
-    trigger ||
-    (gallery.items[index].el.offsetParent &&
-      gallery.items[index].el.getElementsByTagName('img')[0]);
+  var maybeCurrentThumb = gallery.items[index].el.querySelector('img') || {};
+  trigger = trigger || maybeCurrentThumb;
 
   var options = assign({}, gallery.options, {
     index: index,
-    getThumbBoundsFn: function (index) {
-      if (trigger) {
+    getThumbBoundsFn: function getThumbBoundsFn (index) {
+      if (trigger.nodeType === 1) {
         var pageYScroll =
           window.pageYOffset || document.documentElement.scrollTop;
         var rect = trigger.getBoundingClientRect();
@@ -84,14 +86,11 @@ var openPhotoSwipe = function (gallery, index, trigger) {
     options
   );
 
-  // Set width and height if not previously defined
+  // Set width and height if not previously defined]
   pswpGallery.listen('gettingData', function (index, item) {
     if (!item.w || !item.h) {
-      var innerImgEl = item.el.getElementsByTagName('img')[0];
-      if (innerImgEl) {
-        item.w = innerImgEl.width;
-        item.h = innerImgEl.height;
-      }
+      item.w = trigger.offsetWidth || maybeCurrentThumb.offsetWidth;
+      item.h = trigger.offsetHeight || maybeCurrentThumb.offsetHeight;
 
       var img = new Image();
       img.onload = function () {
@@ -102,6 +101,7 @@ var openPhotoSwipe = function (gallery, index, trigger) {
       img.src = item.src;
     }
   });
+
   pswpGallery.init();
 };
 
@@ -121,23 +121,42 @@ var handleGalleryClick = function (gallery) { return function (e) {
   // If the click didn't hit a gallery item, do nothing
   if (!currentItem) { return }
 
-  /* If, for some structural reason, the item is not a
-   * direct child of the gallery element,
-   * let's go up the DOM tree until we find it.
+  /*
+   * Let's get the clicked item index.
+   * If indexSelector is null, let's assume the gallery element direct child.
+   * If not null, let's search for a selector match and find it index.
    */
-  var tmpItem = currentItem;
-  while (tmpItem.parentNode !== gallery.el) {
-    tmpItem = tmpItem.parentNode;
-  }
-  openPhotoSwipe(gallery, getElementIndex(tmpItem), currentItem);
+  var indexItemEl = closest(
+    currentItem,
+    typeof gallery.options.indexSelector === 'string'
+      ? function (el) { return selectorMatches(el, gallery.options.indexSelector); }
+      : function (el) { return el.parentNode === gallery.el; }
+  );
+  openPhotoSwipe(gallery, getElementIndex(indexItemEl));
 }; };
 
 var buildGallery = function (galleryEl, galleryOptions) {
+  if ( galleryOptions === void 0 ) galleryOptions = {};
+
   galleryCount++;
 
   var dataPswpOptions = galleryEl.dataset.pswpOptions;
+  /** Reads the data-pswp-options */
   if (dataPswpOptions != null && dataPswpOptions !== '') {
     galleryOptions = JSON.parse(dataPswpOptions);
+  } else {
+    /** Or the data-pswp-{kebabed-property}="value" */
+    var relevantKeys = Object.keys(galleryEl.dataset).filter(
+      function (k) { return k.indexOf('pswp') === 0 && k !== 'pswp'; }
+    );
+    if (relevantKeys.length > 0) {
+      relevantKeys.forEach(function (datasetKey) {
+        var realKey = datasetKey[4].toLowerCase() + datasetKey.substring(5);
+        if (galleryEl.dataset[datasetKey]) {
+          galleryOptions[realKey] = galleryEl.dataset[datasetKey];
+        }
+      });
+    }
   }
 
   var options = assign(
@@ -161,26 +180,22 @@ var buildGallery = function (galleryEl, galleryOptions) {
 
   var items = slice(
     galleryEl.querySelectorAll(options.itemSelector)
-  ).map(function (item) {
-    var ref = (item.dataset.pswpSize || '')
+  ).map(function (el) {
+    var captionEl = el.querySelector(options.captionSelector) || {};
+
+    var ref = (el.dataset.pswpSize || '')
       .toLowerCase()
-      .split('x');
+      .split('x')
+      .map(parseInt);
     var width = ref[0];
     var height = ref[1];
-    var captionEl = item.querySelector(options.captionSelector);
-    var innerImgEl = item.getElementsByTagName('img')[0];
 
-    return {
-      el: item,
-      src: item.dataset.pswpSrc || item.href,
-      w: width || item.dataset.pswpWidth || 0,
-      h: height || item.dataset.pswpHeight || 0,
-      title:
-        item.dataset.pswpCaption ||
-        (captionEl && captionEl.innerHTML) ||
-        (innerImgEl && innerImgEl.alt) ||
-        ''
-    }
+    var w = width || el.dataset.pswpWidth || 0;
+    var h = height || el.dataset.pswpHeight || 0;
+    var title = el.dataset.pswpCaption || captionEl.innerHTML || '';
+    var src = el.dataset.pswpSrc || el.href;
+
+    return { el: el, src: src, w: w, h: h, title: title }
   });
 
   return { el: galleryEl, options: options, items: items }
@@ -268,13 +283,7 @@ var init = function (
 
   PhotoSwipe = pswpLib;
   PhotoSwipeUI = pswpUILib;
-  PhotoSwipeGlobalOptions = assign(
-    {
-      itemSelector: 'a',
-      captionSelector: 'figcaption'
-    },
-    options
-  );
+  PhotoSwipeGlobalOptions = assign(defaultPhotoswippyOptions, options);
   PhotoswipeTemplate = document.querySelector('.pswp');
   if (!PhotoswipeTemplate) {
     console.error(

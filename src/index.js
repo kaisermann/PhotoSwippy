@@ -5,8 +5,16 @@ let PhotoswipeTemplate
 let galleryCount = 0
 let galleryList = {}
 
+const defaultPhotoswippyOptions = {
+  indexSelector: null,
+  itemSelector: 'a',
+  captionSelector: 'figcaption'
+}
+
+/** Clones an array-like */
 const slice = arrayLike => Array.prototype.slice.call(arrayLike)
 
+/** Finds the closest hierarchical parent that matches a certain condition */
 const closest = (el, fn) => el && (fn(el) ? el : closest(el.parentNode, fn))
 
 const assign =
@@ -48,19 +56,13 @@ const getElementIndex = node => {
 }
 
 const openPhotoSwipe = (gallery, index, trigger) => {
-  /* Photoswipe trigger is defined?
-   * If not, is the element to be shown visible?
-   * If yes, use its image as the trigger element
-   */
-  trigger =
-    trigger ||
-    (gallery.items[index].el.offsetParent &&
-      gallery.items[index].el.getElementsByTagName('img')[0])
+  const maybeCurrentThumb = gallery.items[index].el.querySelector('img') || {}
+  trigger = trigger || maybeCurrentThumb
 
   const options = assign({}, gallery.options, {
     index,
-    getThumbBoundsFn: index => {
-      if (trigger) {
+    getThumbBoundsFn (index) {
+      if (trigger.nodeType === 1) {
         const pageYScroll =
           window.pageYOffset || document.documentElement.scrollTop
         const rect = trigger.getBoundingClientRect()
@@ -79,11 +81,8 @@ const openPhotoSwipe = (gallery, index, trigger) => {
   // Set width and height if not previously defined
   pswpGallery.listen('gettingData', (index, item) => {
     if (!item.w || !item.h) {
-      const innerImgEl = item.el.getElementsByTagName('img')[0]
-      if (innerImgEl) {
-        item.w = innerImgEl.width
-        item.h = innerImgEl.height
-      }
+      item.w = trigger.offsetWidth || maybeCurrentThumb.offsetWidth
+      item.h = trigger.offsetHeight || maybeCurrentThumb.offsetHeight
 
       const img = new Image()
       img.onload = function () {
@@ -94,6 +93,7 @@ const openPhotoSwipe = (gallery, index, trigger) => {
       img.src = item.src
     }
   })
+
   pswpGallery.init()
 }
 
@@ -113,23 +113,40 @@ const handleGalleryClick = gallery => e => {
   // If the click didn't hit a gallery item, do nothing
   if (!currentItem) return
 
-  /* If, for some structural reason, the item is not a
-   * direct child of the gallery element,
-   * let's go up the DOM tree until we find it.
+  /*
+   * Let's get the clicked item index.
+   * If indexSelector is null, let's assume the gallery element direct child.
+   * If not null, let's search for a selector match and find it index.
    */
-  let tmpItem = currentItem
-  while (tmpItem.parentNode !== gallery.el) {
-    tmpItem = tmpItem.parentNode
-  }
-  openPhotoSwipe(gallery, getElementIndex(tmpItem), currentItem)
+  const indexItemEl = closest(
+    currentItem,
+    typeof gallery.options.indexSelector === 'string'
+      ? el => selectorMatches(el, gallery.options.indexSelector)
+      : el => el.parentNode === gallery.el
+  )
+  openPhotoSwipe(gallery, getElementIndex(indexItemEl))
 }
 
-const buildGallery = (galleryEl, galleryOptions) => {
+const buildGallery = (galleryEl, galleryOptions = {}) => {
   galleryCount++
 
   const dataPswpOptions = galleryEl.dataset.pswpOptions
+  /** Reads the data-pswp-options */
   if (dataPswpOptions != null && dataPswpOptions !== '') {
     galleryOptions = JSON.parse(dataPswpOptions)
+  } else {
+    /** Or the data-pswp-{kebabed-property}="value" */
+    const relevantKeys = Object.keys(galleryEl.dataset).filter(
+      k => k.indexOf('pswp') === 0 && k !== 'pswp'
+    )
+    if (relevantKeys.length > 0) {
+      relevantKeys.forEach(datasetKey => {
+        const realKey = datasetKey[4].toLowerCase() + datasetKey.substring(5)
+        if (galleryEl.dataset[datasetKey]) {
+          galleryOptions[realKey] = galleryEl.dataset[datasetKey]
+        }
+      })
+    }
   }
 
   const options = assign(
@@ -153,24 +170,20 @@ const buildGallery = (galleryEl, galleryOptions) => {
 
   const items = slice(
     galleryEl.querySelectorAll(options.itemSelector)
-  ).map(item => {
-    const [width, height] = (item.dataset.pswpSize || '')
+  ).map(el => {
+    const captionEl = el.querySelector(options.captionSelector) || {}
+
+    const [width, height] = (el.dataset.pswpSize || '')
       .toLowerCase()
       .split('x')
-    const captionEl = item.querySelector(options.captionSelector)
-    const innerImgEl = item.getElementsByTagName('img')[0]
+      .map(parseInt)
 
-    return {
-      el: item,
-      src: item.dataset.pswpSrc || item.href,
-      w: width || item.dataset.pswpWidth || 0,
-      h: height || item.dataset.pswpHeight || 0,
-      title:
-        item.dataset.pswpCaption ||
-        (captionEl && captionEl.innerHTML) ||
-        (innerImgEl && innerImgEl.alt) ||
-        ''
-    }
+    const w = width || el.dataset.pswpWidth || 0
+    const h = height || el.dataset.pswpHeight || 0
+    const title = el.dataset.pswpCaption || captionEl.innerHTML || ''
+    const src = el.dataset.pswpSrc || el.href
+
+    return { el, src, w, h, title }
   })
 
   return { el: galleryEl, options, items }
@@ -253,13 +266,7 @@ const init = (
 ) => {
   PhotoSwipe = pswpLib
   PhotoSwipeUI = pswpUILib
-  PhotoSwipeGlobalOptions = assign(
-    {
-      itemSelector: 'a',
-      captionSelector: 'figcaption'
-    },
-    options
-  )
+  PhotoSwipeGlobalOptions = assign(defaultPhotoswippyOptions, options)
   PhotoswipeTemplate = document.querySelector('.pswp')
   if (!PhotoswipeTemplate) {
     console.error(

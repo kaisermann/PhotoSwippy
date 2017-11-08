@@ -1,6 +1,6 @@
 {
   "name": "photoswippy",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "PhotoSwipe friendly wrapper",
   "main": "dist/photoswippy.js",
   "module": "src/index.js",
