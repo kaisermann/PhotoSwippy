@@ -1,3 +1,12 @@
+import {
+  slice,
+  closest,
+  assign,
+  getElementIndex,
+  selectorMatches,
+  getURLHash
+} from './helpers.js'
+
 let PhotoSwipe
 let PhotoSwipeUI
 let PhotoSwipeGlobalOptions
@@ -11,61 +20,20 @@ const defaultPhotoswippyOptions = {
   captionSelector: 'figcaption'
 }
 
-/** Clones an array-like */
-const slice = arrayLike => Array.prototype.slice.call(arrayLike)
-
-/** Finds the closest hierarchical parent that matches a certain condition */
-const closest = (el, fn) => el && (fn(el) ? el : closest(el.parentNode, fn))
-
-const assign =
-  Object.assign ||
-  function (target /* sources */) {
-    if (target == null) {
-      throw new TypeError('Cannot convert undefined or null to object')
+const openPhotoSwipe = (gallery, curIndex, trigger) => {
+  const scaleOriginEl = trigger ||
+    gallery.items[curIndex].el.querySelector('img') || {
+      offsetWidth: 0,
+      offsetHeight: 0
     }
-    const output = Object(target)
-
-    for (let index = 1; index < arguments.length; index++) {
-      const source = arguments[index]
-      if (source != null) {
-        for (const nextKey in source) {
-          if (source.hasOwnProperty(nextKey)) {
-            output[nextKey] = source[nextKey]
-          }
-        }
-      }
-    }
-    return output
-  }
-
-const selectorMatches = (el, selector) => {
-  const fn =
-    Element.prototype.matches ||
-    Element.prototype.webkitMatchesSelector ||
-    Element.prototype.mozMatchesSelector ||
-    Element.prototype.msMatchesSelector
-  return fn.call(el, selector)
-}
-
-const getElementIndex = node => {
-  let index = 0
-  while ((node = node.previousElementSibling)) {
-    ++index
-  }
-  return index
-}
-
-const openPhotoSwipe = (gallery, index, trigger) => {
-  const maybeCurrentThumb = gallery.items[index].el.querySelector('img') || {}
-  trigger = trigger || maybeCurrentThumb
 
   const options = assign({}, gallery.options, {
-    index,
+    index: curIndex,
     getThumbBoundsFn (index) {
-      if (trigger.nodeType === 1) {
+      if (scaleOriginEl.nodeType && scaleOriginEl.offsetParent) {
         const pageYScroll =
           window.pageYOffset || document.documentElement.scrollTop
-        const rect = trigger.getBoundingClientRect()
+        const rect = scaleOriginEl.getBoundingClientRect()
         return { x: rect.left, y: rect.top + pageYScroll, w: rect.width }
       }
     }
@@ -81,8 +49,8 @@ const openPhotoSwipe = (gallery, index, trigger) => {
   // Set width and height if not previously defined
   pswpGallery.listen('gettingData', (index, item) => {
     if (!item.w || !item.h) {
-      item.w = trigger.offsetWidth || maybeCurrentThumb.offsetWidth
-      item.h = trigger.offsetHeight || maybeCurrentThumb.offsetHeight
+      item.w = scaleOriginEl.offsetWidth
+      item.h = scaleOriginEl.offsetHeight
 
       const img = new Image()
       img.onload = function () {
@@ -124,7 +92,8 @@ const handleGalleryClick = gallery => e => {
       ? el => selectorMatches(el, gallery.options.indexSelector)
       : el => el.parentNode === gallery.el
   )
-  openPhotoSwipe(gallery, getElementIndex(indexItemEl))
+  const actualIndex = getElementIndex(indexItemEl)
+  openPhotoSwipe(gallery, actualIndex)
 }
 
 const buildGallery = (galleryEl, galleryOptions = {}) => {
@@ -189,29 +158,11 @@ const buildGallery = (galleryEl, galleryOptions = {}) => {
   return { el: galleryEl, options, items }
 }
 
-// Check if hash url has a 'gid' and a 'pid'
-const verifyURLHash = () => {
-  const hashData = window.location.hash
-    .substring(1)
-    .split('&')
-    .reduce((acc, cur) => {
-      if (cur.length) {
-        const [id, index] = cur.split('=')
-        acc[id] = index
-      }
-      return acc
-    }, {})
-
-  if (hashData.pid && hashData.gid && galleryList[hashData.gid]) {
-    openPhotoSwipe(galleryList[hashData.gid], hashData.pid - 1)
-  }
-}
-
 /*
  * Search for `data-pswp-trigger="gallery-id"` elements to be used
  * as triggers to open a specific gallery.
  */
-const searchTriggers = () => {
+const refreshTriggers = () => {
   const triggers = slice(document.querySelectorAll('[data-pswp-trigger]'))
   triggers.forEach(trigger => {
     if (!trigger.photoswippy) {
@@ -254,9 +205,12 @@ const build = (elOrSelector, options) => {
     }
   })
 
-  // Verify hash url
-  verifyURLHash()
-  searchTriggers()
+  /** If url's hash has a 'pid' and a 'gid', let's open that gallery */
+  const urlHash = getURLHash()
+  if (urlHash.pid && urlHash.gid && galleryList[urlHash.gid]) {
+    openPhotoSwipe(galleryList[urlHash.gid], urlHash.pid - 1, null)
+  }
+  refreshTriggers()
 }
 
 const init = (
@@ -268,6 +222,7 @@ const init = (
   PhotoSwipeUI = pswpUILib
   PhotoSwipeGlobalOptions = assign(defaultPhotoswippyOptions, options)
   PhotoswipeTemplate = document.querySelector('.pswp')
+
   if (!PhotoswipeTemplate) {
     console.error(
       '[PhotoSwippy] Photoswipe template (Element with .pswp class) not found.'

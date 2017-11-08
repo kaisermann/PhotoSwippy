@@ -4,25 +4,50 @@
 	(global.photoswippy = factory());
 }(this, (function () { 'use strict';
 
-var PhotoSwipe;
-var PhotoSwipeUI;
-var PhotoSwipeGlobalOptions;
-var PhotoswipeTemplate;
-var galleryCount = 0;
-var galleryList = {};
-
-var defaultPhotoswippyOptions = {
-  indexSelector: null,
-  itemSelector: 'a',
-  captionSelector: 'figcaption'
-};
-
 /** Clones an array-like */
 var slice = function (arrayLike) { return Array.prototype.slice.call(arrayLike); };
 
 /** Finds the closest hierarchical parent that matches a certain condition */
 var closest = function (el, fn) { return el && (fn(el) ? el : closest(el.parentNode, fn)); };
 
+/** Gets an element index relative to its siblings */
+var getElementIndex = function (node) {
+  var index = 0;
+  while ((node = node.previousElementSibling)) {
+    ++index;
+  }
+  return index
+};
+
+/** Cross-browser Element.matches */
+var selectorMatches = function (el, selector) {
+  var fn =
+    Element.prototype.matches ||
+    Element.prototype.webkitMatchesSelector ||
+    Element.prototype.mozMatchesSelector ||
+    Element.prototype.msMatchesSelector;
+  return fn.call(el, selector)
+};
+
+/** Transform the url hash into an object */
+var getURLHash = function () {
+  var hashData = window.location.hash
+    .substring(1)
+    .split('&')
+    .reduce(function (acc, cur) {
+      if (cur.length) {
+        var ref = cur.split('=');
+        var id = ref[0];
+        var index = ref[1];
+        acc[id] = index;
+      }
+      return acc
+    }, {});
+
+  return hashData
+};
+
+/** Object.assign ponyfill */
 var assign =
   Object.assign ||
   function (target /* sources */) {
@@ -46,34 +71,33 @@ var assign =
     return output
   };
 
-var selectorMatches = function (el, selector) {
-  var fn =
-    Element.prototype.matches ||
-    Element.prototype.webkitMatchesSelector ||
-    Element.prototype.mozMatchesSelector ||
-    Element.prototype.msMatchesSelector;
-  return fn.call(el, selector)
+var PhotoSwipe;
+var PhotoSwipeUI;
+var PhotoSwipeGlobalOptions;
+var PhotoswipeTemplate;
+var galleryCount = 0;
+var galleryList = {};
+
+var defaultPhotoswippyOptions = {
+  indexSelector: null,
+  itemSelector: 'a',
+  captionSelector: 'figcaption'
 };
 
-var getElementIndex = function (node) {
-  var index = 0;
-  while ((node = node.previousElementSibling)) {
-    ++index;
-  }
-  return index
-};
-
-var openPhotoSwipe = function (gallery, index, trigger) {
-  var maybeCurrentThumb = gallery.items[index].el.querySelector('img') || {};
-  trigger = trigger || maybeCurrentThumb;
+var openPhotoSwipe = function (gallery, curIndex, trigger) {
+  var scaleOriginEl = trigger ||
+    gallery.items[curIndex].el.querySelector('img') || {
+      offsetWidth: 0,
+      offsetHeight: 0
+    };
 
   var options = assign({}, gallery.options, {
-    index: index,
+    index: curIndex,
     getThumbBoundsFn: function getThumbBoundsFn (index) {
-      if (trigger.nodeType === 1) {
+      if (scaleOriginEl.nodeType && scaleOriginEl.offsetParent) {
         var pageYScroll =
           window.pageYOffset || document.documentElement.scrollTop;
-        var rect = trigger.getBoundingClientRect();
+        var rect = scaleOriginEl.getBoundingClientRect();
         return { x: rect.left, y: rect.top + pageYScroll, w: rect.width }
       }
     }
@@ -86,11 +110,11 @@ var openPhotoSwipe = function (gallery, index, trigger) {
     options
   );
 
-  // Set width and height if not previously defined]
+  // Set width and height if not previously defined
   pswpGallery.listen('gettingData', function (index, item) {
     if (!item.w || !item.h) {
-      item.w = trigger.offsetWidth || maybeCurrentThumb.offsetWidth;
-      item.h = trigger.offsetHeight || maybeCurrentThumb.offsetHeight;
+      item.w = scaleOriginEl.offsetWidth;
+      item.h = scaleOriginEl.offsetHeight;
 
       var img = new Image();
       img.onload = function () {
@@ -132,7 +156,8 @@ var handleGalleryClick = function (gallery) { return function (e) {
       ? function (el) { return selectorMatches(el, gallery.options.indexSelector); }
       : function (el) { return el.parentNode === gallery.el; }
   );
-  openPhotoSwipe(gallery, getElementIndex(indexItemEl));
+  var actualIndex = getElementIndex(indexItemEl);
+  openPhotoSwipe(gallery, actualIndex);
 }; };
 
 var buildGallery = function (galleryEl, galleryOptions) {
@@ -201,31 +226,11 @@ var buildGallery = function (galleryEl, galleryOptions) {
   return { el: galleryEl, options: options, items: items }
 };
 
-// Check if hash url has a 'gid' and a 'pid'
-var verifyURLHash = function () {
-  var hashData = window.location.hash
-    .substring(1)
-    .split('&')
-    .reduce(function (acc, cur) {
-      if (cur.length) {
-        var ref = cur.split('=');
-        var id = ref[0];
-        var index = ref[1];
-        acc[id] = index;
-      }
-      return acc
-    }, {});
-
-  if (hashData.pid && hashData.gid && galleryList[hashData.gid]) {
-    openPhotoSwipe(galleryList[hashData.gid], hashData.pid - 1);
-  }
-};
-
 /*
  * Search for `data-pswp-trigger="gallery-id"` elements to be used
  * as triggers to open a specific gallery.
  */
-var searchTriggers = function () {
+var refreshTriggers = function () {
   var triggers = slice(document.querySelectorAll('[data-pswp-trigger]'));
   triggers.forEach(function (trigger) {
     if (!trigger.photoswippy) {
@@ -268,9 +273,12 @@ var build = function (elOrSelector, options) {
     }
   });
 
-  // Verify hash url
-  verifyURLHash();
-  searchTriggers();
+  /** If url's hash has a 'pid' and a 'gid', let's open that gallery */
+  var urlHash = getURLHash();
+  if (urlHash.pid && urlHash.gid && galleryList[urlHash.gid]) {
+    openPhotoSwipe(galleryList[urlHash.gid], urlHash.pid - 1, null);
+  }
+  refreshTriggers();
 };
 
 var init = function (
@@ -285,6 +293,7 @@ var init = function (
   PhotoSwipeUI = pswpUILib;
   PhotoSwipeGlobalOptions = assign(defaultPhotoswippyOptions, options);
   PhotoswipeTemplate = document.querySelector('.pswp');
+
   if (!PhotoswipeTemplate) {
     console.error(
       '[PhotoSwippy] Photoswipe template (Element with .pswp class) not found.'
