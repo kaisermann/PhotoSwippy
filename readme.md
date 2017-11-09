@@ -46,6 +46,7 @@ If both `PhotoSwipe` and `PhotoSwipeUI_Default` are on the global scope, the fir
 Each element with a `data-pswp` attribute will become a photoswipe gallery. Its value is optional and defines the gallery ID. That's it.
 
 The default `itemSelector` is `a` and `PhotoSwippy` searches it for:
+
 - URL of image to be opened (`href` or `data-pswp-src`)
 - Size of image to be opened (`data-pswp-width` AND `data-pswp-height` OR `data-pswp-size="WIDTHxHEIGHT"`)
 - Caption (`data-pswp-caption` or the `options.captionSelector` HTML or the thumbnail's `alt` attribute value)
@@ -111,13 +112,37 @@ If a specific element outside of the gallery needs to trigger it (let's suppose 
 
 Options can be defined in three ways:
 
-- Extending the default *global* options by setting the third parameter of `PhotoSwippy.init()` call.
+- Extending the default *global* options by setting the third parameter of `PhotoSwippy.init()` call;
 
-- Calling the `PhotoSwippy.build(elementOrSelector, options)` manually from your code.
+- Calling the `PhotoSwippy.build(elementOrSelector, options)` manually from your code;
 
-- Passing the options object as the json data attribute `data-pswp-options`. Ex: `data-pswp-options='{"key":"val", "key2":"val2"}'`
+- Passing the options object as the json data attribute `data-pswp-options`. Ex: `data-pswp-options='{"key":"val", "key2":"val2"}'`;
 
-PhotoSwippy has two extra options: `itemSelector` (defaults to `a`) and `captionSelector` (defaults to `figcaption`). For other options, please refer to the [PhotoSwipe Documentation](http://photoswipe.com/documentation/options.html).
+- Passing a `data-pswp-{key}="value"` attribute for overriding a single property.
+
+### Photoswippy options
+
+```js
+{
+  /** Gallery item selector */
+  itemSelector: 'a',
+  /** Caption selector */
+  captionSelector: 'figcaption',
+  /*
+   * Gallery item index selector.
+   * Denotes the elements photoswippy uses to detect which item number the user has interacted with.
+   * If a gallery uses, let's say, a slider, you can define it as the slide selector.
+   * If 'null', photoswippy automatically uses the direct children of the gallery element.
+   */
+  indexSelector: null,
+  /** If 'true', the mouseover on a gallery item will preload the image */
+  hoverPreload: false
+}
+```
+
+Each option is overridable with a data attribute like: `data-pswp-option-name="value"`
+
+For other options, please refer to the [PhotoSwipe Documentation](http://photoswipe.com/documentation/options.html).
 
 ## Browsers support <sub><sup><sub><sub>made by <a href="https://godban.github.io">godban</a></sub></sub></sup></sub>
 

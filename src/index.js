@@ -4,7 +4,8 @@ import {
   assign,
   getElementIndex,
   selectorMatches,
-  getURLHash
+  getURLHash,
+  preloadImage
 } from './helpers.js'
 
 let PhotoSwipe
@@ -17,11 +18,12 @@ let galleryList = {}
 const defaultPhotoswippyOptions = {
   indexSelector: null,
   itemSelector: 'a',
-  captionSelector: 'figcaption'
+  captionSelector: 'figcaption',
+  hoverPreload: false
 }
 
-const openPhotoSwipe = (gallery, curIndex, trigger) => {
-  const scaleOriginEl = trigger ||
+const openPhotoSwipe = (gallery, curIndex, triggerEl) => {
+  triggerEl = triggerEl ||
     gallery.items[curIndex].el.querySelector('img') || {
       offsetWidth: 0,
       offsetHeight: 0
@@ -30,10 +32,10 @@ const openPhotoSwipe = (gallery, curIndex, trigger) => {
   const options = assign({}, gallery.options, {
     index: curIndex,
     getThumbBoundsFn (index) {
-      if (scaleOriginEl.nodeType && scaleOriginEl.offsetParent) {
+      if (triggerEl.nodeType && triggerEl.offsetParent) {
         const pageYScroll =
           window.pageYOffset || document.documentElement.scrollTop
-        const rect = scaleOriginEl.getBoundingClientRect()
+        const rect = triggerEl.getBoundingClientRect()
         return { x: rect.left, y: rect.top + pageYScroll, w: rect.width }
       }
     }
@@ -49,16 +51,16 @@ const openPhotoSwipe = (gallery, curIndex, trigger) => {
   // Set width and height if not previously defined
   pswpGallery.listen('gettingData', (index, item) => {
     if (!item.w || !item.h) {
-      item.w = scaleOriginEl.offsetWidth
-      item.h = scaleOriginEl.offsetHeight
+      item.w = triggerEl.offsetWidth
+      item.h = triggerEl.offsetHeight
 
-      const img = new Image()
-      img.onload = function () {
-        item.w = this.width
-        item.h = this.height
-        pswpGallery.updateSize(true)
+      if (!options.hoverPreload || !item.preloadState) {
+        preloadImage(item.src, img => {
+          item.w = img.width
+          item.h = img.height
+          pswpGallery.updateSize(true)
+        })
       }
-      img.src = item.src
     }
   })
 
@@ -66,15 +68,14 @@ const openPhotoSwipe = (gallery, curIndex, trigger) => {
 }
 
 const handleGalleryClick = gallery => e => {
-  e = e || window.event
-  e.preventDefault ? e.preventDefault() : (e.returnValue = false)
+  e.preventDefault()
 
   /*
    * Go up the DOM tree until it finds
    * the clicked item (matches the itemSelector)
    */
   const currentItem = closest(
-    e.target || e.srcElement,
+    e.target,
     el => el.nodeType === 1 && selectorMatches(el, gallery.options.itemSelector)
   )
 
@@ -93,16 +94,13 @@ const handleGalleryClick = gallery => e => {
       : el => el.parentNode === gallery.el
   )
   const actualIndex = getElementIndex(indexItemEl)
-  openPhotoSwipe(gallery, actualIndex)
+  openPhotoSwipe(gallery, actualIndex, currentItem)
 }
 
 const buildGallery = (galleryEl, galleryOptions = {}) => {
-  galleryCount++
-
-  const dataPswpOptions = galleryEl.dataset.pswpOptions
   /** Reads the data-pswp-options */
-  if (dataPswpOptions != null && dataPswpOptions !== '') {
-    galleryOptions = JSON.parse(dataPswpOptions)
+  if (galleryEl.dataset.pswpOptions) {
+    galleryOptions = JSON.parse(galleryEl.dataset.pswpOptions)
   } else {
     /** Or the data-pswp-{kebabed-property}="value" */
     const relevantKeys = Object.keys(galleryEl.dataset).filter(
@@ -111,9 +109,8 @@ const buildGallery = (galleryEl, galleryOptions = {}) => {
     if (relevantKeys.length > 0) {
       relevantKeys.forEach(datasetKey => {
         const realKey = datasetKey[4].toLowerCase() + datasetKey.substring(5)
-        if (galleryEl.dataset[datasetKey]) {
-          galleryOptions[realKey] = galleryEl.dataset[datasetKey]
-        }
+        /** Set to the passed value or as true if we only found the attribute key */
+        galleryOptions[realKey] = galleryEl.dataset[datasetKey] || true
       })
     }
   }
@@ -139,23 +136,80 @@ const buildGallery = (galleryEl, galleryOptions = {}) => {
 
   const items = slice(
     galleryEl.querySelectorAll(options.itemSelector)
-  ).map(el => {
-    const captionEl = el.querySelector(options.captionSelector) || {}
+  ).map(itemEl => {
+    const captionEl = itemEl.querySelector(options.captionSelector) || {}
 
-    const [width, height] = (el.dataset.pswpSize || '')
+    const [width, height] = (itemEl.dataset.pswpSize || '')
       .toLowerCase()
       .split('x')
       .map(parseInt)
 
-    const w = width || el.dataset.pswpWidth || 0
-    const h = height || el.dataset.pswpHeight || 0
-    const title = el.dataset.pswpCaption || captionEl.innerHTML || ''
-    const src = el.dataset.pswpSrc || el.href
+    const w = width || itemEl.dataset.pswpWidth || 0
+    const h = height || itemEl.dataset.pswpHeight || 0
+    const title = itemEl.dataset.pswpCaption || captionEl.innerHTML || ''
+    const src = itemEl.dataset.pswpSrc || itemEl.href
+    const galleryItem = { el: itemEl, src, w, h, title }
 
-    return { el, src, w, h, title }
+    if (options.hoverPreload) {
+      itemEl.addEventListener('mouseover', function itemHover (e) {
+        if (!galleryItem.preloadState) {
+          galleryItem.preloadState = 1
+          preloadImage(
+            src,
+            img => {
+              galleryItem.preloadState = 2
+              galleryItem.w = img.width
+              galleryItem.h = img.height
+              itemEl.removeEventListener('mouseover', itemHover)
+            },
+            () => {
+              /** Reset the preload state in case of error and remove the listener */
+              galleryItem.preloadState = 0
+              itemEl.removeEventListener('mouseover', itemHover)
+            }
+          )
+        }
+      })
+    }
+
+    return galleryItem
   })
 
-  return { el: galleryEl, options, items }
+  const gallery = { el: galleryEl, options, items }
+  galleryEl.addEventListener('click', handleGalleryClick(gallery))
+
+  return gallery
+}
+
+const build = (elOrSelector, options) => {
+  if (!PhotoSwipe || !PhotoSwipeUI) {
+    console.error(
+      '[PhotoSwippy] PhotoSwipe and PhotoSwipeUI libraries were not found. Was "PhotoSwippy.init()" called?'
+    )
+  }
+
+  if (!elOrSelector) return
+
+  const galleryEls =
+    typeof elOrSelector === 'string'
+      ? slice(document.querySelectorAll(elOrSelector))
+      : [elOrSelector]
+
+  galleryEls.forEach(galleryEl => {
+    if (!galleryEl.photoswippy) {
+      galleryCount++
+      const gallery = buildGallery(galleryEl, options)
+      galleryEl.photoswippy = true
+      galleryList[gallery.options.galleryUID] = gallery
+    }
+  })
+
+  /** If url's hash has a 'pid' and a 'gid', let's open that gallery */
+  const urlHash = getURLHash()
+  if (urlHash.pid && urlHash.gid && galleryList[urlHash.gid]) {
+    openPhotoSwipe(galleryList[urlHash.gid], urlHash.pid - 1, null)
+  }
+  refreshTriggers()
 }
 
 /*
@@ -180,37 +234,6 @@ const refreshTriggers = () => {
       })
     }
   })
-}
-
-const build = (elOrSelector, options) => {
-  if (!PhotoSwipe || !PhotoSwipeUI) {
-    console.error(
-      '[PhotoSwippy] PhotoSwipe and PhotoSwipeUI libraries were not found. Was "PhotoSwippy.init()" called?'
-    )
-  }
-
-  if (!elOrSelector) return
-
-  const galleryEls =
-    typeof elOrSelector === 'string'
-      ? slice(document.querySelectorAll(elOrSelector))
-      : [elOrSelector]
-
-  galleryEls.forEach(galleryEl => {
-    if (!galleryEl.photoswippy) {
-      const gallery = buildGallery(galleryEl, options)
-      galleryEl.photoswippy = true
-      galleryEl.addEventListener('click', handleGalleryClick(gallery))
-      galleryList[gallery.options.galleryUID] = gallery
-    }
-  })
-
-  /** If url's hash has a 'pid' and a 'gid', let's open that gallery */
-  const urlHash = getURLHash()
-  if (urlHash.pid && urlHash.gid && galleryList[urlHash.gid]) {
-    openPhotoSwipe(galleryList[urlHash.gid], urlHash.pid - 1, null)
-  }
-  refreshTriggers()
 }
 
 const init = (

@@ -5,6 +5,15 @@ export const slice = arrayLike => Array.prototype.slice.call(arrayLike)
 export const closest = (el, fn) =>
   el && (fn(el) ? el : closest(el.parentNode, fn))
 
+/** Preloads an image and executes a callback */
+export const preloadImage = (url, onLoad, onError) => {
+  const tmpImg = new Image()
+  tmpImg.onload = () => onLoad(tmpImg)
+  if (onError) {
+    tmpImg.onerror = () => onError(tmpImg)
+  }
+  tmpImg.src = url
+}
 /** Gets an element index relative to its siblings */
 export const getElementIndex = node => {
   let index = 0
