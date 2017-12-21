@@ -4,7 +4,7 @@
   "description": "PhotoSwipe friendly wrapper",
   "main": "dist/photoswippy.js",
   "module": "src/index.js",
-  "repository": "https://github.com/tuut/PhotoSwippy",
+  "repository": "https://github.com/kaisermann/PhotoSwippy",
   "author": "Christian Kaisermann <christian@kaisermann.me>",
   "license": "MIT",
   "scripts": {
