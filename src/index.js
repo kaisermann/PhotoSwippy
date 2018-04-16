@@ -19,7 +19,8 @@ const defaultPhotoswippyOptions = {
   indexSelector: null,
   itemSelector: 'a',
   captionSelector: 'figcaption',
-  hoverPreload: false
+  hoverPreload: false,
+  useMsrc: true
 }
 
 const openPhotoSwipe = (gallery, curIndex, triggerEl) => {
@@ -137,6 +138,7 @@ const buildGallery = (galleryEl, galleryOptions = {}) => {
   const items = slice(
     galleryEl.querySelectorAll(options.itemSelector)
   ).map(itemEl => {
+    const image = itemEl.querySelector('img')
     const captionEl = itemEl.querySelector(options.captionSelector) || {}
 
     const [width, height] = (itemEl.dataset.pswpSize || '')
@@ -149,6 +151,10 @@ const buildGallery = (galleryEl, galleryOptions = {}) => {
     const title = itemEl.dataset.pswpCaption || captionEl.innerHTML || ''
     const src = itemEl.dataset.pswpSrc || itemEl.href
     const galleryItem = { el: itemEl, src, w, h, title }
+
+    if (image && options.useMsrc) {
+      galleryItem.msrc = image.src
+    }
 
     if (options.hoverPreload) {
       itemEl.addEventListener('mouseover', function itemHover (e) {

@@ -91,7 +91,8 @@ var defaultPhotoswippyOptions = {
   indexSelector: null,
   itemSelector: 'a',
   captionSelector: 'figcaption',
-  hoverPreload: false
+  hoverPreload: false,
+  useMsrc: true
 };
 
 var openPhotoSwipe = function (gallery, curIndex, triggerEl) {
@@ -211,6 +212,7 @@ var buildGallery = function (galleryEl, galleryOptions) {
   var items = slice(
     galleryEl.querySelectorAll(options.itemSelector)
   ).map(function (itemEl) {
+    var image = itemEl.querySelector('img');
     var captionEl = itemEl.querySelector(options.captionSelector) || {};
 
     var ref = (itemEl.dataset.pswpSize || '')
@@ -225,6 +227,10 @@ var buildGallery = function (galleryEl, galleryOptions) {
     var title = itemEl.dataset.pswpCaption || captionEl.innerHTML || '';
     var src = itemEl.dataset.pswpSrc || itemEl.href;
     var galleryItem = { el: itemEl, src: src, w: w, h: h, title: title };
+
+    if (image && options.useMsrc) {
+      galleryItem.msrc = image.src;
+    }
 
     if (options.hoverPreload) {
       itemEl.addEventListener('mouseover', function itemHover (e) {
