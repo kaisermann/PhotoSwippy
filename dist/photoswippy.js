@@ -101,14 +101,26 @@ var openPhotoSwipe = function (gallery, curIndex, triggerEl) {
       offsetWidth: 0,
       offsetHeight: 0
     };
+  var isOpening = true;
 
   var options = assign({}, gallery.options, {
     index: curIndex,
     getThumbBoundsFn: function getThumbBoundsFn (index) {
       if (triggerEl.nodeType && triggerEl.offsetParent) {
+        // decide weather to use triggerEl or element based on index
+        var element = triggerEl;
+        var isValidIndex = index >= 0 && index < gallery.items.length;
+        if (!isOpening && isValidIndex) {
+          var image = gallery.items[index].el;
+          var imageVisible = image.nodeType && image.offsetParent;
+          if (imageVisible) { element = image; }
+        }
+        isOpening = false;
+
         var pageYScroll =
           window.pageYOffset || document.documentElement.scrollTop;
-        var rect = triggerEl.getBoundingClientRect();
+        var rect = element.getBoundingClientRect();
+
         return { x: rect.left, y: rect.top + pageYScroll, w: rect.width }
       }
     }
@@ -311,7 +323,7 @@ var refreshTriggers = function () {
               .pswpTrigger) + "' not found.")
           );
         } else {
-          openPhotoSwipe(gallery, 0, this);
+          openPhotoSwipe(gallery, -1, this);
         }
       });
     }

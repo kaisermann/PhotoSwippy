@@ -29,14 +29,26 @@ const openPhotoSwipe = (gallery, curIndex, triggerEl) => {
       offsetWidth: 0,
       offsetHeight: 0
     }
+  let isOpening = true
 
   const options = assign({}, gallery.options, {
     index: curIndex,
     getThumbBoundsFn (index) {
       if (triggerEl.nodeType && triggerEl.offsetParent) {
+        // decide weather to use triggerEl or element based on index
+        let element = triggerEl
+        const isValidIndex = index >= 0 && index < gallery.items.length
+        if (!isOpening && isValidIndex) {
+          const image = gallery.items[index].el
+          const imageVisible = image.nodeType && image.offsetParent
+          if (imageVisible) element = image
+        }
+        isOpening = false
+
         const pageYScroll =
           window.pageYOffset || document.documentElement.scrollTop
-        const rect = triggerEl.getBoundingClientRect()
+        const rect = element.getBoundingClientRect()
+
         return { x: rect.left, y: rect.top + pageYScroll, w: rect.width }
       }
     }
@@ -235,7 +247,7 @@ const refreshTriggers = () => {
               .pswpTrigger}' not found.`
           )
         } else {
-          openPhotoSwipe(gallery, 0, this)
+          openPhotoSwipe(gallery, -1, this)
         }
       })
     }
