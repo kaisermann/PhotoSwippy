@@ -136,7 +136,9 @@ Options can be defined in three ways:
    */
   indexSelector: null,
   /** If 'true', the mouseover on a gallery item will preload the image */
-  hoverPreload: false
+  hoverPreload: false,
+  /** If 'true', the src of the thumbnail image (if it exists) will be used as thumbnail for photoswipe (msrc option)*/
+  useMsrc: true
 }
 ```
 
