@@ -19,7 +19,8 @@ const defaultPhotoswippyOptions = {
   indexSelector: null,
   itemSelector: 'a',
   captionSelector: 'figcaption',
-  hoverPreload: false
+  hoverPreload: false,
+  useMsrc: true
 }
 
 const openPhotoSwipe = (gallery, curIndex, triggerEl) => {
@@ -28,14 +29,26 @@ const openPhotoSwipe = (gallery, curIndex, triggerEl) => {
       offsetWidth: 0,
       offsetHeight: 0
     }
+  let isOpening = true
 
   const options = assign({}, gallery.options, {
     index: curIndex,
     getThumbBoundsFn (index) {
       if (triggerEl.nodeType && triggerEl.offsetParent) {
+        // decide weather to use triggerEl or element based on index
+        let element = triggerEl
+        const isValidIndex = index >= 0 && index < gallery.items.length
+        if (!isOpening && isValidIndex) {
+          const image = gallery.items[index].el
+          const imageVisible = image.nodeType && image.offsetParent
+          if (imageVisible) element = image
+        }
+        isOpening = false
+
         const pageYScroll =
           window.pageYOffset || document.documentElement.scrollTop
-        const rect = triggerEl.getBoundingClientRect()
+        const rect = element.getBoundingClientRect()
+
         return { x: rect.left, y: rect.top + pageYScroll, w: rect.width }
       }
     }
@@ -137,6 +150,7 @@ const buildGallery = (galleryEl, galleryOptions = {}) => {
   const items = slice(
     galleryEl.querySelectorAll(options.itemSelector)
   ).map(itemEl => {
+    const image = itemEl.querySelector('img')
     const captionEl = itemEl.querySelector(options.captionSelector) || {}
 
     const [width, height] = (itemEl.dataset.pswpSize || '')
@@ -149,6 +163,10 @@ const buildGallery = (galleryEl, galleryOptions = {}) => {
     const title = itemEl.dataset.pswpCaption || captionEl.innerHTML || ''
     const src = itemEl.dataset.pswpSrc || itemEl.href
     const galleryItem = { el: itemEl, src, w, h, title }
+
+    if (image && options.useMsrc) {
+      galleryItem.msrc = image.src
+    }
 
     if (options.hoverPreload) {
       itemEl.addEventListener('mouseover', function itemHover (e) {
@@ -229,7 +247,7 @@ const refreshTriggers = () => {
               .pswpTrigger}' not found.`
           )
         } else {
-          openPhotoSwipe(gallery, 0, this)
+          openPhotoSwipe(gallery, -1, this)
         }
       })
     }

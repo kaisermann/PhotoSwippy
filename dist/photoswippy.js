@@ -91,7 +91,8 @@ var defaultPhotoswippyOptions = {
   indexSelector: null,
   itemSelector: 'a',
   captionSelector: 'figcaption',
-  hoverPreload: false
+  hoverPreload: false,
+  useMsrc: true
 };
 
 var openPhotoSwipe = function (gallery, curIndex, triggerEl) {
@@ -100,14 +101,26 @@ var openPhotoSwipe = function (gallery, curIndex, triggerEl) {
       offsetWidth: 0,
       offsetHeight: 0
     };
+  var isOpening = true;
 
   var options = assign({}, gallery.options, {
     index: curIndex,
     getThumbBoundsFn: function getThumbBoundsFn (index) {
       if (triggerEl.nodeType && triggerEl.offsetParent) {
+        // decide weather to use triggerEl or element based on index
+        var element = triggerEl;
+        var isValidIndex = index >= 0 && index < gallery.items.length;
+        if (!isOpening && isValidIndex) {
+          var image = gallery.items[index].el;
+          var imageVisible = image.nodeType && image.offsetParent;
+          if (imageVisible) { element = image; }
+        }
+        isOpening = false;
+
         var pageYScroll =
           window.pageYOffset || document.documentElement.scrollTop;
-        var rect = triggerEl.getBoundingClientRect();
+        var rect = element.getBoundingClientRect();
+
         return { x: rect.left, y: rect.top + pageYScroll, w: rect.width }
       }
     }
@@ -211,6 +224,7 @@ var buildGallery = function (galleryEl, galleryOptions) {
   var items = slice(
     galleryEl.querySelectorAll(options.itemSelector)
   ).map(function (itemEl) {
+    var image = itemEl.querySelector('img');
     var captionEl = itemEl.querySelector(options.captionSelector) || {};
 
     var ref = (itemEl.dataset.pswpSize || '')
@@ -225,6 +239,10 @@ var buildGallery = function (galleryEl, galleryOptions) {
     var title = itemEl.dataset.pswpCaption || captionEl.innerHTML || '';
     var src = itemEl.dataset.pswpSrc || itemEl.href;
     var galleryItem = { el: itemEl, src: src, w: w, h: h, title: title };
+
+    if (image && options.useMsrc) {
+      galleryItem.msrc = image.src;
+    }
 
     if (options.hoverPreload) {
       itemEl.addEventListener('mouseover', function itemHover (e) {
@@ -305,7 +323,7 @@ var refreshTriggers = function () {
               .pswpTrigger) + "' not found.")
           );
         } else {
-          openPhotoSwipe(gallery, 0, this);
+          openPhotoSwipe(gallery, -1, this);
         }
       });
     }
