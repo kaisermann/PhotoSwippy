@@ -23,33 +23,36 @@ const defaultPhotoswippyOptions = {
   useMsrc: true
 }
 
-const openPhotoSwipe = (gallery, curIndex, triggerEl) => {
-  triggerEl = triggerEl ||
+const openPhotoSwipe = (gallery, curIndex, openTriggerEl) => {
+  openTriggerEl = openTriggerEl ||
     gallery.items[curIndex].el.querySelector('img') || {
       offsetWidth: 0,
       offsetHeight: 0
     }
-  let isOpening = true
 
   const options = assign({}, gallery.options, {
     index: curIndex,
     getThumbBoundsFn (index) {
-      if (triggerEl.nodeType && triggerEl.offsetParent) {
-        // decide weather to use triggerEl or element based on index
-        let element = triggerEl
-        const isValidIndex = index >= 0 && index < gallery.items.length
-        if (!isOpening && isValidIndex) {
-          const image = gallery.items[index].el
-          const imageVisible = image.nodeType && image.offsetParent
-          if (imageVisible) element = image
-        }
-        isOpening = false
+      /**
+       * The default trigger element is the gallery item at `index`.
+       * If the gallery item isn't visible (offsetParent will be null),
+       * use the element which triggered the gallery
+       */
+      const actionTriggerEl = gallery.items[index].el.offsetParent
+        ? gallery.items[index].el
+        : openTriggerEl
 
+      /** If the trigger element is visible, calculate and return it's frame */
+      if (actionTriggerEl.offsetParent) {
         const pageYScroll =
           window.pageYOffset || document.documentElement.scrollTop
-        const rect = element.getBoundingClientRect()
+        const triggerElFrame = actionTriggerEl.getBoundingClientRect()
 
-        return { x: rect.left, y: rect.top + pageYScroll, w: rect.width }
+        return {
+          x: triggerElFrame.left,
+          y: triggerElFrame.top + pageYScroll,
+          w: triggerElFrame.width
+        }
       }
     }
   })
@@ -64,8 +67,8 @@ const openPhotoSwipe = (gallery, curIndex, triggerEl) => {
   // Set width and height if not previously defined
   pswpGallery.listen('gettingData', (index, item) => {
     if (!item.w || !item.h) {
-      item.w = triggerEl.offsetWidth
-      item.h = triggerEl.offsetHeight
+      item.w = openTriggerEl.offsetWidth
+      item.h = openTriggerEl.offsetHeight
 
       if (!options.hoverPreload || !item.preloadState) {
         preloadImage(item.src, img => {
@@ -147,51 +150,54 @@ const buildGallery = (galleryEl, galleryOptions = {}) => {
    */
   galleryEl.dataset.pswp = options.galleryUID
 
-  const items = slice(
-    galleryEl.querySelectorAll(options.itemSelector)
-  ).map(itemEl => {
-    const image = itemEl.querySelector('img')
-    const captionEl = itemEl.querySelector(options.captionSelector) || {}
+  const items = slice(galleryEl.querySelectorAll(options.itemSelector)).map(
+    itemEl => {
+      const captionEl = itemEl.querySelector(options.captionSelector) || {}
 
-    const [width, height] = (itemEl.dataset.pswpSize || '')
-      .toLowerCase()
-      .split('x')
-      .map(parseInt)
+      const [width, height] = (itemEl.dataset.pswpSize || '')
+        .toLowerCase()
+        .split('x')
+        .map(parseInt)
 
-    const w = width || itemEl.dataset.pswpWidth || 0
-    const h = height || itemEl.dataset.pswpHeight || 0
-    const title = itemEl.dataset.pswpCaption || captionEl.innerHTML || ''
-    const src = itemEl.dataset.pswpSrc || itemEl.href
-    const galleryItem = { el: itemEl, src, w, h, title }
+      const w = width || itemEl.dataset.pswpWidth || 0
+      const h = height || itemEl.dataset.pswpHeight || 0
+      const title = itemEl.dataset.pswpCaption || captionEl.innerHTML || ''
+      const src = itemEl.dataset.pswpSrc || itemEl.href
+      const galleryItem = { el: itemEl, src, w, h, title }
 
-    if (image && options.useMsrc) {
-      galleryItem.msrc = image.src
-    }
-
-    if (options.hoverPreload) {
-      itemEl.addEventListener('mouseover', function itemHover (e) {
-        if (!galleryItem.preloadState) {
-          galleryItem.preloadState = 1
-          preloadImage(
-            src,
-            img => {
-              galleryItem.preloadState = 2
-              galleryItem.w = img.width
-              galleryItem.h = img.height
-              itemEl.removeEventListener('mouseover', itemHover)
-            },
-            () => {
-              /** Reset the preload state in case of error and remove the listener */
-              galleryItem.preloadState = 0
-              itemEl.removeEventListener('mouseover', itemHover)
-            }
-          )
+      if (options.useMsrc) {
+        /** If options.useMsrc is true, look for the 'src' attribute of the gallery item thumbnail <img/> element. */
+        const imageEl = itemEl.querySelector('img')
+        if (imageEl) {
+          galleryItem.msrc = imageEl.src
         }
-      })
-    }
+      }
 
-    return galleryItem
-  })
+      if (options.hoverPreload) {
+        itemEl.addEventListener('mouseover', function itemHover (e) {
+          if (!galleryItem.preloadState) {
+            galleryItem.preloadState = 1
+            preloadImage(
+              src,
+              img => {
+                galleryItem.preloadState = 2
+                galleryItem.w = img.width
+                galleryItem.h = img.height
+                itemEl.removeEventListener('mouseover', itemHover)
+              },
+              () => {
+                /** Reset the preload state in case of error and remove the listener */
+                galleryItem.preloadState = 0
+                itemEl.removeEventListener('mouseover', itemHover)
+              }
+            )
+          }
+        })
+      }
+
+      return galleryItem
+    }
+  )
 
   const gallery = { el: galleryEl, options, items }
   galleryEl.addEventListener('click', handleGalleryClick(gallery))
@@ -240,14 +246,15 @@ const refreshTriggers = () => {
     if (!trigger.photoswippy) {
       trigger.photoswippy = true
       trigger.addEventListener('click', function () {
-        const gallery = galleryList[this.dataset.pswpTrigger]
+        const [galleryID, index = 0] = this.dataset.pswpTrigger.split('@')
+        const gallery = galleryList[galleryID]
         if (!gallery) {
           console.error(
-            `[PhotoSwippy] Gallery with id '${this.dataset
-              .pswpTrigger}' not found.`
+            `[PhotoSwippy] Gallery with id '${galleryID}' not found.`
           )
         } else {
-          openPhotoSwipe(gallery, -1, this)
+          /** Open gallery passing the trigger element and the initial item (always the first gallery entry) */
+          openPhotoSwipe(gallery, parseInt(index), this)
         }
       })
     }

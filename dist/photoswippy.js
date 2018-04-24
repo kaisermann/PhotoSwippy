@@ -95,33 +95,36 @@ var defaultPhotoswippyOptions = {
   useMsrc: true
 };
 
-var openPhotoSwipe = function (gallery, curIndex, triggerEl) {
-  triggerEl = triggerEl ||
+var openPhotoSwipe = function (gallery, curIndex, openTriggerEl) {
+  openTriggerEl = openTriggerEl ||
     gallery.items[curIndex].el.querySelector('img') || {
       offsetWidth: 0,
       offsetHeight: 0
     };
-  var isOpening = true;
 
   var options = assign({}, gallery.options, {
     index: curIndex,
     getThumbBoundsFn: function getThumbBoundsFn (index) {
-      if (triggerEl.nodeType && triggerEl.offsetParent) {
-        // decide weather to use triggerEl or element based on index
-        var element = triggerEl;
-        var isValidIndex = index >= 0 && index < gallery.items.length;
-        if (!isOpening && isValidIndex) {
-          var image = gallery.items[index].el;
-          var imageVisible = image.nodeType && image.offsetParent;
-          if (imageVisible) { element = image; }
-        }
-        isOpening = false;
+      /**
+       * The default trigger element is the gallery item at `index`.
+       * If the gallery item isn't visible (offsetParent will be null),
+       * use the element which triggered the gallery
+       */
+      var actionTriggerEl = gallery.items[index].el.offsetParent
+        ? gallery.items[index].el
+        : openTriggerEl;
 
+      /** If the trigger element is visible, calculate and return it's frame */
+      if (actionTriggerEl.offsetParent) {
         var pageYScroll =
           window.pageYOffset || document.documentElement.scrollTop;
-        var rect = element.getBoundingClientRect();
+        var triggerElFrame = actionTriggerEl.getBoundingClientRect();
 
-        return { x: rect.left, y: rect.top + pageYScroll, w: rect.width }
+        return {
+          x: triggerElFrame.left,
+          y: triggerElFrame.top + pageYScroll,
+          w: triggerElFrame.width
+        }
       }
     }
   });
@@ -136,8 +139,8 @@ var openPhotoSwipe = function (gallery, curIndex, triggerEl) {
   // Set width and height if not previously defined
   pswpGallery.listen('gettingData', function (index, item) {
     if (!item.w || !item.h) {
-      item.w = triggerEl.offsetWidth;
-      item.h = triggerEl.offsetHeight;
+      item.w = openTriggerEl.offsetWidth;
+      item.h = openTriggerEl.offsetHeight;
 
       if (!options.hoverPreload || !item.preloadState) {
         preloadImage(item.src, function (img) {
@@ -221,53 +224,56 @@ var buildGallery = function (galleryEl, galleryOptions) {
    */
   galleryEl.dataset.pswp = options.galleryUID;
 
-  var items = slice(
-    galleryEl.querySelectorAll(options.itemSelector)
-  ).map(function (itemEl) {
-    var image = itemEl.querySelector('img');
-    var captionEl = itemEl.querySelector(options.captionSelector) || {};
+  var items = slice(galleryEl.querySelectorAll(options.itemSelector)).map(
+    function (itemEl) {
+      var captionEl = itemEl.querySelector(options.captionSelector) || {};
 
-    var ref = (itemEl.dataset.pswpSize || '')
-      .toLowerCase()
-      .split('x')
-      .map(parseInt);
-    var width = ref[0];
-    var height = ref[1];
+      var ref = (itemEl.dataset.pswpSize || '')
+        .toLowerCase()
+        .split('x')
+        .map(parseInt);
+      var width = ref[0];
+      var height = ref[1];
 
-    var w = width || itemEl.dataset.pswpWidth || 0;
-    var h = height || itemEl.dataset.pswpHeight || 0;
-    var title = itemEl.dataset.pswpCaption || captionEl.innerHTML || '';
-    var src = itemEl.dataset.pswpSrc || itemEl.href;
-    var galleryItem = { el: itemEl, src: src, w: w, h: h, title: title };
+      var w = width || itemEl.dataset.pswpWidth || 0;
+      var h = height || itemEl.dataset.pswpHeight || 0;
+      var title = itemEl.dataset.pswpCaption || captionEl.innerHTML || '';
+      var src = itemEl.dataset.pswpSrc || itemEl.href;
+      var galleryItem = { el: itemEl, src: src, w: w, h: h, title: title };
 
-    if (image && options.useMsrc) {
-      galleryItem.msrc = image.src;
-    }
-
-    if (options.hoverPreload) {
-      itemEl.addEventListener('mouseover', function itemHover (e) {
-        if (!galleryItem.preloadState) {
-          galleryItem.preloadState = 1;
-          preloadImage(
-            src,
-            function (img) {
-              galleryItem.preloadState = 2;
-              galleryItem.w = img.width;
-              galleryItem.h = img.height;
-              itemEl.removeEventListener('mouseover', itemHover);
-            },
-            function () {
-              /** Reset the preload state in case of error and remove the listener */
-              galleryItem.preloadState = 0;
-              itemEl.removeEventListener('mouseover', itemHover);
-            }
-          );
+      if (options.useMsrc) {
+        /** If options.useMsrc is true, look for the 'src' attribute of the gallery item thumbnail <img/> element. */
+        var imageEl = itemEl.querySelector('img');
+        if (imageEl) {
+          galleryItem.msrc = imageEl.src;
         }
-      });
-    }
+      }
 
-    return galleryItem
-  });
+      if (options.hoverPreload) {
+        itemEl.addEventListener('mouseover', function itemHover (e) {
+          if (!galleryItem.preloadState) {
+            galleryItem.preloadState = 1;
+            preloadImage(
+              src,
+              function (img) {
+                galleryItem.preloadState = 2;
+                galleryItem.w = img.width;
+                galleryItem.h = img.height;
+                itemEl.removeEventListener('mouseover', itemHover);
+              },
+              function () {
+                /** Reset the preload state in case of error and remove the listener */
+                galleryItem.preloadState = 0;
+                itemEl.removeEventListener('mouseover', itemHover);
+              }
+            );
+          }
+        });
+      }
+
+      return galleryItem
+    }
+  );
 
   var gallery = { el: galleryEl, options: options, items: items };
   galleryEl.addEventListener('click', handleGalleryClick(gallery));
@@ -316,14 +322,17 @@ var refreshTriggers = function () {
     if (!trigger.photoswippy) {
       trigger.photoswippy = true;
       trigger.addEventListener('click', function () {
-        var gallery = galleryList[this.dataset.pswpTrigger];
+        var ref = this.dataset.pswpTrigger.split('@');
+        var galleryID = ref[0];
+        var index = ref[1]; if ( index === void 0 ) index = 0;
+        var gallery = galleryList[galleryID];
         if (!gallery) {
           console.error(
-            ("[PhotoSwippy] Gallery with id '" + (this.dataset
-              .pswpTrigger) + "' not found.")
+            ("[PhotoSwippy] Gallery with id '" + galleryID + "' not found.")
           );
         } else {
-          openPhotoSwipe(gallery, -1, this);
+          /** Open gallery passing the trigger element and the initial item (always the first gallery entry) */
+          openPhotoSwipe(gallery, parseInt(index), this);
         }
       });
     }

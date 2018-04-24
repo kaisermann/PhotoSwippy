@@ -108,6 +108,14 @@ If a specific element outside of the gallery needs to trigger it (let's suppose 
 </button>
 ```
 
+It's also possible to a trigger to open a specific gallery item by appending a `@ITEM_INDEX`:
+
+```html
+<button data-pswp-trigger="gallery-1@3">
+  Open gallery (id: gallery-1) at fourth item (index: 3).
+</button>
+```
+
 ## Options
 
 Options can be defined in three ways:
