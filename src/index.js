@@ -26,9 +26,9 @@ const defaultPhotoswippyOptions = {
 const openPhotoSwipe = (gallery, curIndex, openTriggerEl) => {
   openTriggerEl = openTriggerEl ||
     gallery.items[curIndex].el.querySelector('img') || {
-      offsetWidth: 0,
-      offsetHeight: 0
-    }
+    offsetWidth: 0,
+    offsetHeight: 0
+  }
 
   const options = assign({}, gallery.options, {
     index: curIndex,
@@ -87,9 +87,9 @@ const handleGalleryClick = gallery => e => {
   e.preventDefault()
 
   /*
-   * Go up the DOM tree until it finds
-   * the clicked item (matches the itemSelector)
-   */
+* Go up the DOM tree until it finds
+* the clicked item (matches the itemSelector)
+*/
   const currentItem = closest(
     e.target,
     el => el.nodeType === 1 && selectorMatches(el, gallery.options.itemSelector)
@@ -99,10 +99,10 @@ const handleGalleryClick = gallery => e => {
   if (!currentItem) return
 
   /*
-   * Let's get the clicked item index.
-   * If indexSelector is null, let's assume the gallery element direct child.
-   * If not null, let's search for a selector match and find it index.
-   */
+* Let's get the clicked item index.
+* If indexSelector is null, let's assume the gallery element direct child.
+* If not null, let's search for a selector match and find it index.
+*/
   const indexItemEl = closest(
     currentItem,
     typeof gallery.options.indexSelector === 'string'
@@ -146,8 +146,8 @@ const buildGallery = (galleryEl, galleryOptions = {}) => {
   )
 
   /* Update the element data-pswp attribute
-   * with the actual ID (useful for generated ones)
-   */
+* with the actual ID (useful for generated ones)
+*/
   galleryEl.dataset.pswp = options.galleryUID
 
   const items = slice(galleryEl.querySelectorAll(options.itemSelector)).map(
@@ -237,9 +237,9 @@ const build = (elOrSelector, options) => {
 }
 
 /*
- * Search for `data-pswp-trigger="gallery-id"` elements to be used
- * as triggers to open a specific gallery.
- */
+* Search for `data-pswp-trigger="gallery-id"` elements to be used
+* as triggers to open a specific gallery.
+*/
 const refreshTriggers = () => {
   const triggers = slice(document.querySelectorAll('[data-pswp-trigger]'))
   triggers.forEach(trigger => {
